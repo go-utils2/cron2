@@ -8,22 +8,22 @@ import (
 	"time"
 )
 
-// Configuration options for creating a parser. Most options specify which
-// fields should be included, while others enable features. If a field is not
-// included the parser will assume a default value. These options do not change
-// the order fields are parse in.
+// ParseOption 创建解析器的配置选项。大多数选项指定应该
+// 包含哪些字段，而其他选项启用功能。如果字段未
+// 包含，解析器将假定默认值。这些选项不会改变
+// 字段解析的顺序。
 type ParseOption int
 
 const (
-	Second         ParseOption = 1 << iota // Seconds field, default 0
-	SecondOptional                         // Optional seconds field, default 0
-	Minute                                 // Minutes field, default 0
-	Hour                                   // Hours field, default 0
-	Dom                                    // Day of month field, default *
-	Month                                  // Month field, default *
-	Dow                                    // Day of week field, default *
-	DowOptional                            // Optional day of week field, default *
-	Descriptor                             // Allow descriptors such as @monthly, @weekly, etc.
+	Second         ParseOption = 1 << iota // 秒字段，默认 0
+	SecondOptional                         // 可选秒字段，默认 0
+	Minute                                 // 分钟字段，默认 0
+	Hour                                   // 小时字段，默认 0
+	Dom                                    // 月中日字段，默认 *
+	Month                                  // 月字段，默认 *
+	Dow                                    // 周中日字段，默认 *
+	DowOptional                            // 可选周中日字段，默认 *
+	Descriptor                             // 允许描述符，如 @monthly、@weekly 等。
 )
 
 var places = []ParseOption{
@@ -44,30 +44,29 @@ var defaults = []string{
 	"*",
 }
 
-// A custom Parser that can be configured.
+// Parser 可以配置的自定义解析器。
 type Parser struct {
 	options ParseOption
 }
 
-// NewParser creates a Parser with custom options.
+// NewParser 使用自定义选项创建解析器。
 //
-// It panics if more than one Optional is given, since it would be impossible to
-// correctly infer which optional is provided or missing in general.
+// 如果给出多个可选项，它会恐慌，因为通常无法
+// 正确推断提供或缺少哪个可选项。
 //
-// Examples
+// 示例
 //
-//  // Standard parser without descriptors
-//  specParser := NewParser(Minute | Hour | Dom | Month | Dow)
-//  sched, err := specParser.Parse("0 0 15 */3 *")
+//	// 不带描述符的标准解析器
+//	specParser := NewParser(Minute | Hour | Dom | Month | Dow)
+//	sched, err := specParser.Parse("0 0 15 */3 *")
 //
-//  // Same as above, just excludes time fields
-//  specParser := NewParser(Dom | Month | Dow)
-//  sched, err := specParser.Parse("15 */3 *")
+//	// 与上面相同，只是排除时间字段
+//	specParser := NewParser(Dom | Month | Dow)
+//	sched, err := specParser.Parse("15 */3 *")
 //
-//  // Same as above, just makes Dow optional
-//  specParser := NewParser(Dom | Month | DowOptional)
-//  sched, err := specParser.Parse("15 */3")
-//
+//	// 与上面相同，只是使 Dow 可选
+//	specParser := NewParser(Dom | Month | DowOptional)
+//	sched, err := specParser.Parse("15 */3")
 func NewParser(options ParseOption) Parser {
 	optionals := 0
 	if options&DowOptional > 0 {
@@ -82,15 +81,15 @@ func NewParser(options ParseOption) Parser {
 	return Parser{options}
 }
 
-// Parse returns a new crontab schedule representing the given spec.
-// It returns a descriptive error if the spec is not valid.
-// It accepts crontab specs and features configured by NewParser.
+// Parse 返回表示给定规范的新 crontab 计划。
+// 如果规范无效，它返回描述性错误。
+// 它接受由 NewParser 配置的 crontab 规范和功能。
 func (p Parser) Parse(spec string) (Schedule, error) {
 	if len(spec) == 0 {
 		return nil, fmt.Errorf("empty spec string")
 	}
 
-	// Extract timezone if present
+	// 如果存在则提取时区
 	var loc = time.Local
 	if strings.HasPrefix(spec, "TZ=") || strings.HasPrefix(spec, "CRON_TZ=") {
 		var err error
@@ -102,7 +101,7 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 		spec = strings.TrimSpace(spec[i:])
 	}
 
-	// Handle named schedules (descriptors), if configured
+	// 处理命名计划（描述符），如果已配置
 	if strings.HasPrefix(spec, "@") {
 		if p.options&Descriptor == 0 {
 			return nil, fmt.Errorf("parser does not accept descriptors: %v", spec)
@@ -110,10 +109,10 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 		return parseDescriptor(spec, loc)
 	}
 
-	// Split on whitespace.
+	// 按空白字符分割。
 	fields := strings.Fields(spec)
 
-	// Validate & fill in any omitted or optional fields
+	// 验证并填充任何省略或可选字段
 	var err error
 	fields, err = normalizeFields(fields, p.options)
 	if err != nil {
@@ -152,13 +151,13 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 	}, nil
 }
 
-// normalizeFields takes a subset set of the time fields and returns the full set
-// with defaults (zeroes) populated for unset fields.
+// normalizeFields 接受时间字段的子集并返回完整集合，
+// 为未设置的字段填充默认值（零）。
 //
-// As part of performing this function, it also validates that the provided
-// fields are compatible with the configured options.
+// 作为执行此功能的一部分，它还验证提供的
+// 字段与配置的选项兼容。
 func normalizeFields(fields []string, options ParseOption) ([]string, error) {
-	// Validate optionals & add their field to options
+	// 验证可选项并将其字段添加到选项中
 	optionals := 0
 	if options&SecondOptional > 0 {
 		options |= Second
@@ -172,7 +171,7 @@ func normalizeFields(fields []string, options ParseOption) ([]string, error) {
 		return nil, fmt.Errorf("multiple optionals may not be configured")
 	}
 
-	// Figure out how many fields we need
+	// 计算我们需要多少个字段
 	max := 0
 	for _, place := range places {
 		if options&place > 0 {
@@ -181,7 +180,7 @@ func normalizeFields(fields []string, options ParseOption) ([]string, error) {
 	}
 	min := max - optionals
 
-	// Validate number of fields
+	// 验证字段数量
 	if count := len(fields); count < min || count > max {
 		if min == max {
 			return nil, fmt.Errorf("expected exactly %d fields, found %d: %s", min, count, fields)
@@ -189,7 +188,7 @@ func normalizeFields(fields []string, options ParseOption) ([]string, error) {
 		return nil, fmt.Errorf("expected %d to %d fields, found %d: %s", min, max, count, fields)
 	}
 
-	// Populate the optional field if not provided
+	// 如果未提供则填充可选字段
 	if min < max && len(fields) == min {
 		switch {
 		case options&DowOptional > 0:
@@ -201,7 +200,7 @@ func normalizeFields(fields []string, options ParseOption) ([]string, error) {
 		}
 	}
 
-	// Populate all fields not part of options with their defaults
+	// 用默认值填充不属于选项的所有字段
 	n := 0
 	expandedFields := make([]string, len(places))
 	copy(expandedFields, defaults)
@@ -218,21 +217,20 @@ var standardParser = NewParser(
 	Minute | Hour | Dom | Month | Dow | Descriptor,
 )
 
-// ParseStandard returns a new crontab schedule representing the given
-// standardSpec (https://en.wikipedia.org/wiki/Cron). It requires 5 entries
-// representing: minute, hour, day of month, month and day of week, in that
-// order. It returns a descriptive error if the spec is not valid.
+// ParseStandard 返回一个表示给定standardSpec的新crontab调度
+// (https://en.wikipedia.org/wiki/Cron)。它需要5个条目，
+// 按顺序表示：分钟、小时、月中的日、月份和星期几。
+// 如果规范无效，它返回描述性错误。
 //
-// It accepts
-//   - Standard crontab specs, e.g. "* * * * ?"
-//   - Descriptors, e.g. "@midnight", "@every 1h30m"
+// 它接受
+//   - 标准crontab规范，例如 "* * * * ?"
+//   - 描述符，例如 "@midnight", "@every 1h30m"
 func ParseStandard(standardSpec string) (Schedule, error) {
 	return standardParser.Parse(standardSpec)
 }
 
-// getField returns an Int with the bits set representing all of the times that
-// the field represents or error parsing field value.  A "field" is a comma-separated
-// list of "ranges".
+// getField 返回一个Int，其中设置的位表示该字段表示的所有时间，
+// 或解析字段值时的错误。"字段"是以逗号分隔的"范围"列表。
 func getField(field string, r bounds) (uint64, error) {
 	var bits uint64
 	ranges := strings.FieldsFunc(field, func(r rune) bool { return r == ',' })
@@ -246,9 +244,11 @@ func getField(field string, r bounds) (uint64, error) {
 	return bits, nil
 }
 
-// getRange returns the bits indicated by the given expression:
-//   number | number "-" number [ "/" number ]
-// or error parsing range.
+// getRange 返回给定表达式指示的位：
+//
+//	number | number "-" number [ "/" number ]
+//
+// 或解析范围时的错误。
 func getRange(expr string, r bounds) (uint64, error) {
 	var (
 		start, end, step uint
@@ -290,7 +290,7 @@ func getRange(expr string, r bounds) (uint64, error) {
 			return 0, err
 		}
 
-		// Special handling: "N/step" means "N-max/step".
+		// 特殊处理："N/step" 意味着 "N-max/step"。
 		if singleDigit {
 			end = r.max
 		}
@@ -317,7 +317,7 @@ func getRange(expr string, r bounds) (uint64, error) {
 	return getBits(start, end, step) | extra, nil
 }
 
-// parseIntOrName returns the (possibly-named) integer contained in expr.
+// parseIntOrName 返回expr中包含的（可能命名的）整数。
 func parseIntOrName(expr string, names map[string]uint) (uint, error) {
 	if names != nil {
 		if namedInt, ok := names[strings.ToLower(expr)]; ok {
@@ -327,7 +327,7 @@ func parseIntOrName(expr string, names map[string]uint) (uint, error) {
 	return mustParseInt(expr)
 }
 
-// mustParseInt parses the given expression as an int or returns an error.
+// mustParseInt 将给定表达式解析为int或返回错误。
 func mustParseInt(expr string) (uint, error) {
 	num, err := strconv.Atoi(expr)
 	if err != nil {
@@ -340,7 +340,7 @@ func mustParseInt(expr string) (uint, error) {
 	return uint(num), nil
 }
 
-// getBits sets all bits in the range [min, max], modulo the given step size.
+// getBits 在范围[min, max]内设置所有位，按给定步长取模。
 func getBits(min, max, step uint) uint64 {
 	var bits uint64
 
@@ -356,12 +356,12 @@ func getBits(min, max, step uint) uint64 {
 	return bits
 }
 
-// all returns all bits within the given bounds.  (plus the star bit)
+// all 返回给定边界内的所有位。（加上星号位）
 func all(r bounds) uint64 {
 	return getBits(r.min, r.max, 1) | starBit
 }
 
-// parseDescriptor returns a predefined schedule for the expression, or error if none matches.
+// parseDescriptor 为表达式返回预定义的调度，如果没有匹配则返回错误。
 func parseDescriptor(descriptor string, loc *time.Location) (Schedule, error) {
 	switch descriptor {
 	case "@yearly", "@annually":

@@ -9,11 +9,12 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/go-utils2/time2"
 )
 
-// Many tests schedule a job for every second, and then wait at most a second
-// for it to run.  This amount is just slightly larger than 1 second to
-// compensate for a few milliseconds of runtime.
+// 许多测试安排每秒运行一个作业，然后最多等待一秒钟让它运行。
+// 这个时间量略大于1秒，以补偿几毫秒的运行时间。
 const OneSecond = 1*time.Second + 50*time.Millisecond
 
 type syncWriter struct {
@@ -82,7 +83,7 @@ func TestJobPanicRecovery(t *testing.T) {
 	}
 }
 
-// Start and stop cron with no entries.
+// 启动和停止没有条目的cron。
 func TestNoEntries(t *testing.T) {
 	cron := newWithSeconds()
 	cron.Start()
@@ -94,7 +95,7 @@ func TestNoEntries(t *testing.T) {
 	}
 }
 
-// Start, stop, then add an entry. Verify entry doesn't run.
+// 启动、停止，然后添加一个条目。验证条目不会运行。
 func TestStopCausesJobsToNotRun(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -112,7 +113,7 @@ func TestStopCausesJobsToNotRun(t *testing.T) {
 	}
 }
 
-// Add a job, start cron, expect it runs.
+// 添加一个作业，启动cron，期望它运行。
 func TestAddBeforeRunning(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -130,7 +131,7 @@ func TestAddBeforeRunning(t *testing.T) {
 	}
 }
 
-// Start cron, add a job, expect it runs.
+// 启动cron，添加一个作业，期望它运行。
 func TestAddWhileRunning(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -147,7 +148,7 @@ func TestAddWhileRunning(t *testing.T) {
 	}
 }
 
-// Test for #34. Adding a job after calling start results in multiple job invocations
+// 测试#34。在调用start后添加作业会导致多次作业调用
 func TestAddWhileRunningWithDelay(t *testing.T) {
 	cron := newWithSeconds()
 	cron.Start()
@@ -162,7 +163,7 @@ func TestAddWhileRunningWithDelay(t *testing.T) {
 	}
 }
 
-// Add a job, remove a job, start cron, expect nothing runs.
+// 添加一个作业，移除一个作业，启动cron，期望什么都不运行。
 func TestRemoveBeforeRunning(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -181,7 +182,7 @@ func TestRemoveBeforeRunning(t *testing.T) {
 	}
 }
 
-// Start cron, add a job, remove it, expect it doesn't run.
+// 启动cron，添加一个作业，移除它，期望它不运行。
 func TestRemoveWhileRunning(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -199,7 +200,7 @@ func TestRemoveWhileRunning(t *testing.T) {
 	}
 }
 
-// Test timing with Entries.
+// 测试Entries的时间。
 func TestSnapshotEntries(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -223,10 +224,9 @@ func TestSnapshotEntries(t *testing.T) {
 	}
 }
 
-// Test that the entries are correctly sorted.
-// Add a bunch of long-in-the-future entries, and an immediate entry, and ensure
-// that the immediate entry runs immediately.
-// Also: Test that multiple jobs run in the same instant.
+// 测试条目是否正确排序。
+// 添加一堆远期条目和一个立即条目，确保立即条目立即运行。
+// 另外：测试多个作业在同一时刻运行。
 func TestMultipleEntries(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
@@ -251,7 +251,7 @@ func TestMultipleEntries(t *testing.T) {
 	}
 }
 
-// Test running the same job twice.
+// 测试运行同一个作业两次。
 func TestRunningJobTwice(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
@@ -293,18 +293,18 @@ func TestRunningMultipleSchedules(t *testing.T) {
 	}
 }
 
-// Test that the cron is run in the local time zone (as opposed to UTC).
+// 测试cron在本地时区运行（而不是UTC）。
 func TestLocalTimezone(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 
-	now := time.Now()
+	now := time2.Now()
 	// FIX: Issue #205
 	// This calculation doesn't work in seconds 58 or 59.
 	// Take the easy way out and sleep.
 	if now.Second() >= 58 {
 		time.Sleep(2 * time.Second)
-		now = time.Now()
+		now = time2.Now()
 	}
 	spec := fmt.Sprintf("%d,%d %d %d %d %d ?",
 		now.Second()+1, now.Second()+2, now.Minute(), now.Hour(), now.Day(), now.Month())
@@ -321,7 +321,7 @@ func TestLocalTimezone(t *testing.T) {
 	}
 }
 
-// Test that the cron is run in the given time zone (as opposed to local).
+// 测试cron在给定时区运行（而不是本地时区）。
 func TestNonLocalTimezone(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
@@ -332,13 +332,13 @@ func TestNonLocalTimezone(t *testing.T) {
 		t.Fail()
 	}
 
-	now := time.Now().In(loc)
+	now := time2.Now().In(loc)
 	// FIX: Issue #205
 	// This calculation doesn't work in seconds 58 or 59.
 	// Take the easy way out and sleep.
 	if now.Second() >= 58 {
 		time.Sleep(2 * time.Second)
-		now = time.Now().In(loc)
+		now = time2.Now().In(loc)
 	}
 	spec := fmt.Sprintf("%d,%d %d %d %d %d ?",
 		now.Second()+1, now.Second()+2, now.Minute(), now.Hour(), now.Day(), now.Month())
@@ -355,8 +355,7 @@ func TestNonLocalTimezone(t *testing.T) {
 	}
 }
 
-// Test that calling stop before start silently returns without
-// blocking the stop channel.
+// 测试在start之前调用stop会静默返回而不阻塞stop通道。
 func TestStopWithoutStart(t *testing.T) {
 	cron := New()
 	cron.Stop()
@@ -371,7 +370,7 @@ func (t testJob) Run() {
 	t.wg.Done()
 }
 
-// Test that adding an invalid job spec returns an error
+// 测试添加无效的作业规范会返回错误
 func TestInvalidJobSpec(t *testing.T) {
 	cron := New()
 	_, err := cron.AddJob("this will not parse", nil)
@@ -380,7 +379,7 @@ func TestInvalidJobSpec(t *testing.T) {
 	}
 }
 
-// Test blocking run method behaves as Start()
+// 测试阻塞运行方法的行为与Start()相同
 func TestBlockingRun(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -405,7 +404,7 @@ func TestBlockingRun(t *testing.T) {
 	}
 }
 
-// Test that double-running is a no-op
+// 测试重复运行是无操作的
 func TestStartNoop(t *testing.T) {
 	var tickChan = make(chan struct{}, 2)
 
@@ -432,7 +431,7 @@ func TestStartNoop(t *testing.T) {
 	}
 }
 
-// Simple test using Runnables.
+// 使用Runnables的简单测试。
 func TestJob(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -485,8 +484,8 @@ func TestJob(t *testing.T) {
 	}
 }
 
-// Issue #206
-// Ensure that the next run of a job after removing an entry is accurate.
+// 问题#206
+// 确保移除条目后作业的下次运行是准确的。
 func TestScheduleAfterRemoval(t *testing.T) {
 	var wg1 sync.WaitGroup
 	var wg2 sync.WaitGroup
@@ -541,7 +540,7 @@ func (*ZeroSchedule) Next(time.Time) time.Time {
 	return time.Time{}
 }
 
-// Tests that job without time does not run
+// 测试没有时间的作业不会运行
 func TestJobWithZeroTimeDoesNotRun(t *testing.T) {
 	cron := newWithSeconds()
 	var calls int64
@@ -696,7 +695,7 @@ func stop(cron *Cron) chan bool {
 	return ch
 }
 
-// newWithSeconds returns a Cron with the seconds field enabled.
+// newWithSeconds 返回启用秒字段的Cron。
 func newWithSeconds() *Cron {
 	return New(WithParser(secondParser), WithChain())
 }

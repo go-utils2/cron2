@@ -134,15 +134,15 @@ func TestChainDelayIfStillRunning(t *testing.T) {
 			go wrappedJob.Run()
 		}()
 
-		// After 5ms, the first job is still in progress, and the second job was
-		// run but should be waiting for it to finish.
+		// 5ms后，第一个作业仍在进行中，第二个作业已运行
+		// 但应该等待第一个作业完成。
 		time.Sleep(5 * time.Millisecond)
 		started, done := j.Started(), j.Done()
 		if started != 1 || done != 0 {
 			t.Error("expected first job started, but not finished, got", started, done)
 		}
 
-		// Verify that the second job completes.
+		// 验证第二个作业完成。
 		time.Sleep(25 * time.Millisecond)
 		started, done = j.Started(), j.Done()
 		if started != 2 || done != 2 {
@@ -188,15 +188,14 @@ func TestChainSkipIfStillRunning(t *testing.T) {
 			go wrappedJob.Run()
 		}()
 
-		// After 5ms, the first job is still in progress, and the second job was
-		// aleady skipped.
+		// 5ms后，第一个作业仍在进行中，第二个作业已被跳过。
 		time.Sleep(5 * time.Millisecond)
 		started, done := j.Started(), j.Done()
 		if started != 1 || done != 0 {
 			t.Error("expected first job started, but not finished, got", started, done)
 		}
 
-		// Verify that the first job completes and second does not run.
+		// 验证第一个作业完成，第二个作业不运行。
 		time.Sleep(25 * time.Millisecond)
 		started, done = j.Started(), j.Done()
 		if started != 1 || done != 1 {

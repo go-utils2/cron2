@@ -8,29 +8,29 @@ import (
 	"time"
 )
 
-// DefaultLogger is used by Cron if none is specified.
+// DefaultLogger 如果未指定，则由Cron使用。
 var DefaultLogger Logger = PrintfLogger(log.New(os.Stdout, "cron: ", log.LstdFlags))
 
-// DiscardLogger can be used by callers to discard all log messages.
+// DiscardLogger 可以被调用者用来丢弃所有日志消息。
 var DiscardLogger Logger = PrintfLogger(log.New(ioutil.Discard, "", 0))
 
-// Logger is the interface used in this package for logging, so that any backend
-// can be plugged in. It is a subset of the github.com/go-logr/logr interface.
+// Logger 是此包中用于日志记录的接口，因此可以插入任何后端。
+// 它是github.com/go-logr/logr接口的子集。
 type Logger interface {
-	// Info logs routine messages about cron's operation.
+	// Info 记录关于cron操作的常规消息。
 	Info(msg string, keysAndValues ...interface{})
-	// Error logs an error condition.
+	// Error 记录错误条件。
 	Error(err error, msg string, keysAndValues ...interface{})
 }
 
-// PrintfLogger wraps a Printf-based logger (such as the standard library "log")
-// into an implementation of the Logger interface which logs errors only.
+// PrintfLogger 将基于Printf的记录器（如标准库"log"）
+// 包装成仅记录错误的Logger接口实现。
 func PrintfLogger(l interface{ Printf(string, ...interface{}) }) Logger {
 	return printfLogger{l, false}
 }
 
-// VerbosePrintfLogger wraps a Printf-based logger (such as the standard library
-// "log") into an implementation of the Logger interface which logs everything.
+// VerbosePrintfLogger 将基于Printf的记录器（如标准库"log"）
+// 包装成记录所有内容的Logger接口实现。
 func VerbosePrintfLogger(l interface{ Printf(string, ...interface{}) }) Logger {
 	return printfLogger{l, true}
 }
@@ -56,8 +56,7 @@ func (pl printfLogger) Error(err error, msg string, keysAndValues ...interface{}
 		append([]interface{}{msg, "error", err}, keysAndValues...)...)
 }
 
-// formatString returns a logfmt-like format string for the number of
-// key/values.
+// formatString 为键/值的数量返回类似logfmt的格式字符串。
 func formatString(numKeysAndValues int) string {
 	var sb strings.Builder
 	sb.WriteString("%s")
@@ -73,7 +72,7 @@ func formatString(numKeysAndValues int) string {
 	return sb.String()
 }
 
-// formatTimes formats any time.Time values as RFC3339.
+// formatTimes 将任何time.Time值格式化为RFC3339。
 func formatTimes(keysAndValues []interface{}) []interface{} {
 	var formattedArgs []interface{}
 	for _, arg := range keysAndValues {

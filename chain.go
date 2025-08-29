@@ -5,28 +5,33 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/go-utils2/time2"
 )
 
-// JobWrapper decorates the given Job with some behavior.
+// JobWrapper 用某些行为装饰给定的Job。
 type JobWrapper func(Job) Job
 
-// Chain is a sequence of JobWrappers that decorates submitted jobs with
-// cross-cutting behaviors like logging or synchronization.
+// Chain 是JobWrapper的序列，用横切行为（如日志记录或同步）
+// 装饰提交的作业。
 type Chain struct {
 	wrappers []JobWrapper
 }
 
-// NewChain returns a Chain consisting of the given JobWrappers.
+// NewChain 返回由给定JobWrapper组成的Chain。
 func NewChain(c ...JobWrapper) Chain {
 	return Chain{c}
 }
 
-// Then decorates the given job with all JobWrappers in the chain.
+// Then 用链中的所有JobWrapper装饰给定的作业。
 //
-// This:
-//     NewChain(m1, m2, m3).Then(job)
-// is equivalent to:
-//     m1(m2(m3(job)))
+// 这样：
+//
+//	NewChain(m1, m2, m3).Then(job)
+//
+// 等价于：
+//
+//	m1(m2(m3(job)))
 func (c Chain) Then(j Job) Job {
 	for i := range c.wrappers {
 		j = c.wrappers[len(c.wrappers)-i-1](j)
@@ -34,7 +39,7 @@ func (c Chain) Then(j Job) Job {
 	return j
 }
 
-// Recover panics in wrapped jobs and log them with the provided logger.
+// Recover 恢复包装作业中的panic并使用提供的记录器记录它们。
 func Recover(logger Logger) JobWrapper {
 	return func(j Job) Job {
 		return FuncJob(func() {
@@ -55,14 +60,13 @@ func Recover(logger Logger) JobWrapper {
 	}
 }
 
-// DelayIfStillRunning serializes jobs, delaying subsequent runs until the
-// previous one is complete. Jobs running after a delay of more than a minute
-// have the delay logged at Info.
+// DelayIfStillRunning 序列化作业，延迟后续运行直到前一个完成。
+// 延迟超过一分钟后运行的作业会在Info级别记录延迟。
 func DelayIfStillRunning(logger Logger) JobWrapper {
 	return func(j Job) Job {
 		var mu sync.Mutex
 		return FuncJob(func() {
-			start := time.Now()
+			start := time2.Now()
 			mu.Lock()
 			defer mu.Unlock()
 			if dur := time.Since(start); dur > time.Minute {
@@ -73,8 +77,8 @@ func DelayIfStillRunning(logger Logger) JobWrapper {
 	}
 }
 
-// SkipIfStillRunning skips an invocation of the Job if a previous invocation is
-// still running. It logs skips to the given logger at Info level.
+// SkipIfStillRunning 如果前一个调用仍在运行，则跳过Job的调用。
+// 它在Info级别向给定记录器记录跳过。
 func SkipIfStillRunning(logger Logger) JobWrapper {
 	return func(j Job) Job {
 		var ch = make(chan struct{}, 1)
